@@ -147,6 +147,118 @@ Podemos ver que na primeira vez o dado trafega entre as máquinas a fim de desco
 Uma vez descoberto, o switch guarda a porte em que se encontra o IP solicitado e guarda essa conexão para futuras requisições.
 ```
 ![switch](./imagens/Switch.gif)
+
  Apesar dos switches terem resolvido o problema do broadcast, ainda é possível fazer com que o trafego de dados ocorra "descontrolavelmente" pela rede, basta sobrecarregar o armazenamento do switch enviando vários endereços MACs falsos, para resolver isso, os switches podem ser configurados para restringir o acesso as portas para determinados MACs, desabilitando-as sempre que um novo MAC for detectado.
 
  >O **ARP** é o protocolo utilizado para fazer o mapeamento entre o endereço IP e o endereço MAC de um dispositivo. Isso é necessário porque o MAC encontra-se um nível abaixo do IP e eu preciso dele para poder transmitir as informações.
+
+ # **Máscara de rede**
+ As máscaras de rede servem para "informar os requisitos para um computador estar na mesma rede que o outro", exemplo, uma máscara de rede **255.255.255.0** informa que os 3 primeiros conjuntos de números em um IP devem ser igual para que haja uma comunicação entre as máquinas, seguindo esse exemplo, um computador de ip **192.168.0.1** pode trocar dados com um computador de ip **192.168.0.2**, mas não com um computador de ip **191.168.0.1**, pois o primeiro conjunto de números está diferente dos outros.
+
+ Esse **255** refere-se à rede, enquanto o 0 refere-se à máquina/hosts.
+
+O nome de cada grupo de números é Octeto.
+
+ > **Máscara de rede** tem como função dividir o endereço IP em dois grupos (rede e máquina) e a partir daí poder definir quando outro dispositivo estará na mesma rede que eu.
+
+ # Roteador
+ Feito para conectar uma rede a outra rede.
+
+ #### **Como saber se precisamos de um cabo direto ou de um crossover?**
+ Para responder essa pergunta, fazemos outras perguntas:
+ 
+ 1 - Os aparelhos são iguais? Não: Cabo cruzado/crossover.
+ 
+ 2 - Essa conexão vai explorar a totalidade máxima natural que o equipamento foi projetado para fazer? Não: Cabo cruzado/crossover.
+
+Por exemplo ao interconectar o computador ao hub e o computador ao switch, o computador foi feito para se comunicar com várias máquinas e o hub e switch foram feitos para interconectar diversas máquinas. Dessa forma ao conectarmos os dois, vamos estar explorando o que os dois foram fabricados para fazer naturalmente. Porém o roteador foi feito para interconectar redes, se eu coloco somente um dispositivo, não terei como inserir outros dispositivos para o roteador encaminhar os pacotes e então a totalidade de sua função não está sendo explora. Devemos usar cabo crossover.
+
+### Configurando o roteador
+Hoje em dia, os equipamentos roteadores que temos em casa já vem com um switch embutido, mas como o software é mais para o ramo empresarial, essa junção não existe, então os dois equipamentos são segmentados.
+
+Para que essa configuração seja feita, primeiro precisamos de uma máquina e um cabo console, cabo esse que antigamente era uma ponta RJ45 e outra ponta chamada RS232, mas essa porta já foi substituída por um USB.
+![configurando-roteador](./imagens/configurando-roteador.png)
+
+Para fazer a configuração, precisamos de um programa terminal, um dos mais usados chama-se putty.
+
+Nesse exercício, montamos um cenário hipotético onde o departamento do financeiro, ip 191.168.0.1, precisa se comunicar com o setor do marketing, ip 192.168.0.1, mas ambos os setores estão em redes distintas, faremos essa ligação através de um roteador.
+
+Se observar-mos a imagem, é possível ver que as portas do roteador vem desligadas por padrão, primeiro passo é ativa-las.
+
+Primeiro, precisamos acessar o roteador pelo terminal da máquina e entrar em modo root, no software da cisco, basta escrever **enable**.
+
+Para entrar na aba de configurações, basta digitar **configure terminal** no terminal:
+
+![configure-terminal](./imagens/configure-terminal.png)
+
+Nesse caso, a porta do nosso roteador chama-se **interface gigabitEthernet 0/0/0**, então é ela que temos que ativar com o comando **no shutdown**, a mesma coisa com a segunda porta, segue os comandos:
+
+```CMD
+    enable
+    config terminal
+    interface gigabitEthernet 0/0/0
+    no shutdown
+```
+
+saída:
+
+```CMD
+Router(config)#interface gigabitEthernet 0/0/0
+Router(config-if)#no shutdown
+
+Router(config-if)#interface fastEthernet 0/0
+```
+
+![configure-terminal](./imagens/interface-gigabitEthernet.png)
+
+![configure-terminal](./imagens/no-shutdown.png)
+
+Próximo passo é configurar o IP, começando pela segunda máquina.
+
+Pelo prompt, conseguimos ver que, parar "cadastrar" uma máquina na rede, precisamos da-lá um IP e informar a máscara de rede na qual ela pertence, lembrando que para as máquinas pertencerem a mesma rede, devem compartilhar a mesma máscara, o IP informado aqui não é o da máquina, e sim o IP da porta do roteador que a máquina está conectada.
+
+```CMD
+    ip address 191.168.0.5 255.255.255.0
+```
+
+![configurando-ip](./imagens/configurando-ip.png)
+
+A segunda máquina está em uma rede diferente, lembramos que seu ip é **191.168.0.1**.
+
+```CMD
+    ip address 192.168.0.5 255.255.255.0
+```
+
+Podemos ver que, se feito corretamente, o roteador vai conseguir pingar as duas máquinas, mas ambas não vão poder mandar requisições ICMP entre sí.
+
+![ping-funcionando](./imagens/pings-funcionando.png)
+
+Mas por que não conseguimos trafegar dados entre as máquinas diretamente? um fator muito importante que impede isso é a diferença entre o primeiro octeto de ambos os IPs, vejamos.
+```CMD
+ips - 
+191.168.0.1
+192.168.0.1
+máscara de rede - 
+255.255.255.0
+```
+
+A máscara de rede exige que, para dois computadores se comunicarem na mesma rede, o padrão dos octetos devem ser o mesmo, com exceção, nesse caso, do último octeto.
+
+Para resolver esse problema, usamos algo chamado **Default Gateway** ou *Portão Padrão*, nós configuramos isso nas máquinas, apontando para qual vai ser o portão padrão de saída dos dados. Nesse campo, colocamos o IP que nós demos para a porta do roteador referente a onde cada máquina está conectada, como descrito abaixo:
+
+```CMD
+    191.168.0.1 -> 191.168.0.5
+    192.168.0.1 -> 192.168.0.5
+```
+![default-gateway](./imagens/default-gateway.png)
+
+Só assim conseguimos trafegar informação entre as duas máquinas:
+
+![pingando-entre-máquinas](./imagens/pingando-entre-maquinas.png)
+
+## **Resumindo**
+
+Quando temos redes diferentes, utilizamos o **default gateway** do roteador para fazer essa intermediação entre os dois comutadores.
+
+## **Como acessar o roteador da nossa casa?**
+Simples, basta saber qual é o nosso **default gateway** pelo *ifconfig* no prompt de comando e jogar esse ip lá no google!
