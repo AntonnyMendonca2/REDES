@@ -262,3 +262,137 @@ Quando temos redes diferentes, utilizamos o **default gateway** do roteador para
 
 ## **Como acessar o roteador da nossa casa?**
 Simples, basta saber qual é o nosso **default gateway** pelo *ifconfig* no prompt de comando e jogar esse ip lá no google!
+
+
+# **IPs e suas classes**
+
+| **Classe do endereçamento** | **Intervalo 1º Octeto** | **Máscara de Rede** | **Intervalo Privado**
+| :---: | :---: | :---: | :---: 
+| **Classe A** | 1 - 126 | 255.0.0.0  | 10.X.X.X
+| **Classe B** | 128 - 191 | 255.255.0.0 | 172.16.X.X - 172.16.X.X
+| **Classe C** | 192 - 223 | 255.255.255.0 | 192.168.X.X
+| **Classe D** | 224 - 239 | - | -
+| **Classe E** | 240 - 255 | - | -
+
+## **Intervalo Privado**
+Dentro de cada um dos intervalos de IP, teremos faixas que são chamadas de **privadas** ou **intervalo privado**. Elas recebem esse nome, porque só podemos nos comunicar na rede local, não podendo ser utilizados na comunicação na internet.
+
+Mas se o IP 192.168.x.x é um endereço privado, como eu consigo acessar a internet? isso ocorre através do método **NAT**, que traduz o nosso endereço privado para um endereço público, isso quem faz é a nossa provedora de internet.
+
+---
+
+Só pelo primeiro octeto já da pra saber em qual classe se encaixa o IP, exemplo:
+
+```CMD
+    192.168.0.1 = Classe C
+    187.77.45.8 = Classe B
+```
+
+> O endereço **127.0.0.1** seria uma faixa de endereço IP reservada, esse seria um endereço interno da placa de rede para realizar testes e verificar se ela está de fato validando os protocolos TCP/IP.
+
+A classe **D** é reservada para o uso de multi-casting, é quando queremos fazer conexão somente com alguns dispositivos da nossa rede, ela não é atribuída para nossas máquinas, assim como a classe **E**.
+
+
+### **IPv6**
+veio no lugar do IPv4 pois acabaram os IPs públicos disponíveis.
+
+### **Como saber o endereço de rede e o endereço de Broadcast?**
+
+Para isso, precisamos analisar a máscara de rede do IP, exemplo:
+```CMD
+    124.2.1.3
+    255.0.0.0
+```
+Para saber o endereço de rede, basta retirar todos os **255** da máscara e substituir pelo respectivo octeto:
+```CMD
+    124.0.0.0
+```
+E o broadcast? bom, é só substituir o **255** pelo seu respectivo octeto e colocar **255** onde eram zeros na máscara de rede:
+```CMD
+    124.255.255.255
+```
+ambos os endereços não podem ser atribuídos em uma máquina, mas os endereços abaixo podem:
+```CMD
+    124.1.0.0
+    124.0.0.255
+```
+todo endereço que esteja dentro do intervalo entre o endereço de rede e o endereço de broadcast são válidos.
+
+> Lembrando: os zeros cortados são somente os originais da mascara de rede, se um IP for classe C e seu terceiro octeto for 0, ele não é cortado, dado que a máscara de rede do ip classe C é 255.255.255.0, o 0 do terceiro octeto é pertencente ao IP e não a máscara de rede.
+
+# **Endereçamentos IP com DHCP**
+É fácil atribuir IPs manualmente para uma, duas ou três máquinas, mas imagine um cenário onde precisamos atribuir IPs para 100 máquinas, isso demoraria muito tempo se feito de forma manual, é ai que entra o servidor **DHCP** para automatizar esse processo.
+
+Quem vai fazer esse papel é o roteador, para isso, montamos um cenário no software da cisco.
+
+![cenario](./imagens/cenario.png)
+
+Após habilitar a porta do roteador, precisamos seguir uma série de comandos para utilizar o DHCP, primeiro precisamos dizer para o roteador que essa configuração será feita:
+```CMD
+    ip dhcp pool NOMEDHCP
+```
+
+![nomedhcp](./imagens/nomedhcp.png)
+
+Após isso, precisamos passar qual vai ser o endereço de rede e a máscara de rede desse nosso DHCP, nesse caso, vamos trabalhar com um IP de classe C:
+```CMD
+    network 192.168.0.0 255.255.0.0
+```
+![nomedhcp](./imagens/ipnetwork-dhcp.png)
+
+Feito isso, precisamos especificar o gateway para os computadores, ou seja, pra onde eles devem enviar informação caso queira enviar dados para alguém de fora da rede. Para isso, utilizamos o comando *default-router*.
+![default-router](./imagens/default-router.png)
+
+Agora que setamos o default-gateway, precisamos atribuir o IP para a porta do roteador, essa porta deve ter o mesmo IP do default-gateway, obviamente.
+
+![default-router](./imagens/ip-router.png)
+
+Como último processo, devemos trocar a configuração de IPs das máquinas de Estático para DHCP:
+
+![default-router](./imagens/DHCP-success.png)
+
+Na primeira vez, o roteador vai iniciar um broadcast procurando o IP informado.
+
+Assim, conseguimos pingar cada máquina.
+
+# **Acessando o Google nas máquinas do nosso cenário**
+
+Para esse exercício, nós criaremos o servidor do google, para acelerar o processo, a parte de configuração da porta do roteador para o switch do google já foi feita.
+
+Para a porta *gigaitEthernet 0/0/1* do nosso roteador, aquela que fará conexão com o switch da google, vamos utilizar o seguinte ip estático de classe A:
+```CMD
+    8.8.8.1 255.0.0.0
+```
+
+o servidor foi configurado da seguinte forma:
+```CMD
+    ip:                 8.255.255.254
+    default-gateway:    8.8.8.1
+```
+
+![google](./imagens/ip-servidor.png)
+
+Lá no servidor, vamos em *serviços>HTTP>index>editar* e criamos um exemplo de site que aparecerá ao acessar o servidor.
+![google](./imagens/google.png)
+
+Nesse ponto, já conseguimos acessar o servidor do google através de uma máquina, basta colocar o IP da mesma no webbrowser.
+![google](./imagens/acessando-google.png)
+
+Mas temos um problema, o usuário vai ter que memorizar nosso IP para acessar o nosso site? essa não é uma boa prática, para isso, utilizaremos um servidor DNS.
+
+Para isso, anexamos um outro servidor ao switch do google e atribuímos seu IP juntamente com o gateway padrão.
+![DNS](./imagens/DNS.png)
+
+Após isso, precisamos ir em *serviços>DNS* e fazer as configurações para o mapeamento do IP para o nosso site.
+![DNS-1](./imagens/DNS-1.png)
+
+Ainda não acabou, para que funcione esse mapeamento, precisamos especificar lá no nosso roteador:
+![DNS-2](./imagens/DNS-2.png)
+```CMD
+    ip dhcp pool NOMEDHCP
+    dns-server 8.255.255.254
+```
+Após isso, precisamos dar um *refresh* nos ips das máquinas, basta ir nas configurações dos IPs, mudar pra estático e voltar para dinâmico.
+![DNS-3](./imagens/DNS-3.png)
+
+![DNS-3](./imagens/www.google.com.png)
